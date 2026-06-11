@@ -15,4 +15,12 @@ app.register_blueprint(settings_bp,url_prefix="/settings")
 app.register_blueprint(upi_bp,url_prefix="/upi")
 @app.route("/")
 def home(): return {"message":"Temple Finance Running"}
-if __name__=="__main__": app.run(debug=True)
+import os
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+
+    app.run(
+        host="0.0.0.0",
+        port=port
+    )
