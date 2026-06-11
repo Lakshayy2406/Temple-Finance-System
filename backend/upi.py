@@ -144,11 +144,11 @@ def convert(tx_id):
 
     if not cash_ref:
         income_sheet.append_row(
-        [date_str, time_str, sender, amount, "Cash"]
-    )
-    cash_ref = f"INCOME-{len(income_sheet.get_all_values())}"
+            [date_str, time_str, sender, "", amount, "Cash", ""]
+        )
+        cash_ref = f"INCOME-{len(income_sheet.get_all_values())}"
 
-    sheet.update_cell(row_idx, 5, "Converted")
+    sheet.update_cell(row_idx, 7, "Converted")
 
     conv_id = f"CONV-{now.strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:4].upper()}"
     get_sheet("UPI_Conversions").append_row(
