@@ -19,7 +19,7 @@ def add():
     ensure_income_time_column()
     income_sheet = get_sheet("Income")
     income_sheet.append_row(
-        [date_str, time_str, d["name"], d["amount"], mode]
+        [date_str, time_str, d["name"], d["amount"], mode, '']
     )
 
     if mode.lower() == "upi":
