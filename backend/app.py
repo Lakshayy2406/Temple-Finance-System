@@ -1,6 +1,7 @@
 
-from flask import Flask
+from flask import Flask 
 from flask_cors import CORS
+import traceback
 from income import income_bp
 from expense import expense_bp
 from dashboard import dashboard_bp
@@ -8,6 +9,13 @@ from settings import settings_bp
 from upi import upi_bp
 app=Flask(__name__)
 CORS(app)
+
+@app.errorhandler(Exception)
+def show_error(e):
+    print("SERVER ERROR:")
+    print(traceback.format_exc())
+    return {"error": str(e)}, 500
+    
 app.register_blueprint(income_bp,url_prefix="/income")
 app.register_blueprint(expense_bp,url_prefix="/expense")
 app.register_blueprint(dashboard_bp,url_prefix="/dashboard")
