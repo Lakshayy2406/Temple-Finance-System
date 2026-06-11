@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from google_sheet import get_sheet, ensure_income_time_column, ensure_upi_sheets
 from datetime import datetime
 from upi import make_upi_tx_id
+from zoneinfo import ZoneInfo
 
 income_bp = Blueprint("income", __name__)
 
@@ -10,15 +11,15 @@ income_bp = Blueprint("income", __name__)
 @income_bp.post("/add")
 def add():
     d = request.json
-    now = datetime.now()
-    date_str = d.get("date") or now.strftime("%d-%m-%Y")
-    time_str = d.get("time") or now.strftime("%H:%M")
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    date_str = now.strftime("%d-%m-%Y")
+    time_str = now.strftime("%I:%M %p")
     mode = d.get("mode", "Cash").strip()
 
     ensure_income_time_column()
     income_sheet = get_sheet("Income")
     income_sheet.append_row(
-        [date_str, time_str, d["name"], d["amount"], mode, ""]
+        [date_str, time_str, d["name"], d["amount"], mode]
     )
 
     if mode.lower() == "upi":
