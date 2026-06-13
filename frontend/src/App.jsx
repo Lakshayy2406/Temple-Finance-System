@@ -22,6 +22,14 @@ import { formatDateTime } from "./utils/format";
 
 const MODES = ["Cash", "UPI"];
 
+function recordMatchesSearch(record, fields, query) {
+  const term = query.trim().toLowerCase();
+  if (!term) return true;
+  return fields.some((field) =>
+    String(record[field] ?? "").toLowerCase().includes(term)
+  );
+}
+
 function Toast({ message, type, onClose }) {
   useEffect(() => {
     const t = setTimeout(onClose, 3000);
@@ -31,6 +39,26 @@ function Toast({ message, type, onClose }) {
   return (
     <div className={`toast ${type}`} role="status">
       {message}
+    </div>
+  );
+}
+
+function SearchBox({ value, onChange }) {
+  return (
+    <div className="search-box">
+      <span className="search-icon">🔎</span>
+      <input
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search by name, title, sender, or record ID"
+        aria-label="Search records"
+      />
+      {value && (
+        <button type="button" className="search-clear" onClick={() => onChange("")}>
+          ×
+        </button>
+      )}
     </div>
   );
 }
@@ -533,6 +561,7 @@ export default function App() {
   const [convertedUpi, setConvertedUpi] = useState([]);
   const [converting, setConverting] = useState(null);
   const [upiSynced, setUpiSynced] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -588,14 +617,42 @@ export default function App() {
     return () => clearInterval(interval);
   }, [loadUpi]);
 
-  const filteredIncome = useMemo(
-    () => activeIncome(filterByPeriod(income, period, customRange)),
-    [income, period, customRange]
+  const filteredIncome = useMemo(() => {
+    const periodRecords = activeIncome(filterByPeriod(income, period, customRange));
+    return periodRecords.filter((row) =>
+      recordMatchesSearch(row, ["Name", "Amount", "Mode", "Date", "Time"], searchQuery)
+    );
+  }, [income, period, customRange, searchQuery]);
+
+  const filteredExpense = useMemo(() => {
+    const periodRecords = filterByPeriod(expense, period, customRange);
+    return periodRecords.filter((row) =>
+      recordMatchesSearch(row, ["Title", "Amount", "Mode", "Date"], searchQuery)
+    );
+  }, [expense, period, customRange, searchQuery]);
+
+  const filteredPendingUpi = useMemo(
+    () =>
+      pendingUpi.filter((row) =>
+        recordMatchesSearch(
+          row,
+          ["Sender", "Transaction ID", "Reference", "Amount", "Date", "Time"],
+          searchQuery
+        )
+      ),
+    [pendingUpi, searchQuery]
   );
 
-  const filteredExpense = useMemo(
-    () => filterByPeriod(expense, period, customRange),
-    [expense, period, customRange]
+  const filteredConvertedUpi = useMemo(
+    () =>
+      convertedUpi.filter((row) =>
+        recordMatchesSearch(
+          row,
+          ["Conversion ID", "Transaction ID", "Cash Income Ref", "Amount", "Date", "Time"],
+          searchQuery
+        )
+      ),
+    [convertedUpi, searchQuery]
   );
 
   async function handleAddIncome(form) {
@@ -693,6 +750,8 @@ export default function App() {
           </div>
         </header>
 
+        <SearchBox value={searchQuery} onChange={setSearchQuery} />
+
         {tab !== "upi" && (
           <PeriodFilter
             period={period}
@@ -717,8 +776,8 @@ export default function App() {
             )}
             {tab === "upi" && (
               <UpiConversionView
-                pending={pendingUpi}
-                converted={convertedUpi}
+                pending={filteredPendingUpi}
+                converted={filteredConvertedUpi}
                 onConvert={handleConvertUpi}
                 onRefresh={loadUpi}
                 converting={converting}

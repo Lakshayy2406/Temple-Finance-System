@@ -2,10 +2,15 @@
 import re
 import uuid
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from flask import Blueprint, jsonify, request
 from google_sheet import get_sheet, ensure_upi_sheets, ensure_income_time_column
 
 upi_bp = Blueprint("upi", __name__)
+
+
+def _now():
+    return datetime.now(ZoneInfo("Asia/Kolkata"))
 
 
 def _donor_slug(name):
@@ -15,7 +20,7 @@ def _donor_slug(name):
 
 
 def make_upi_tx_id(donor_name, now=None):
-    now = now or datetime.now()
+    now = now or _now()
     donor = _donor_slug(donor_name)
     return f"UPI-{donor}-{now.strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
 
@@ -83,7 +88,7 @@ def incoming():
             if row[4] == str(amount) and row[5] == reference and reference:
                 return jsonify({"error": "Duplicate UPI transaction"}), 409
 
-    now = datetime.now()
+    now = _now()
     sender = d.get("sender", "UPI Payment")
     tx_id = d.get("transaction_id") or make_upi_tx_id(sender, now)
     sheet = get_sheet("UPI_Inbox")
@@ -96,7 +101,7 @@ def incoming():
         [
             tx_id,
             d.get("date") or now.strftime("%d-%m-%Y"),
-            d.get("time") or now.strftime("%H:%M"),
+            d.get("time") or now.strftime("%I:%M %p"),
             amount,
             sender,
             reference,
@@ -125,9 +130,9 @@ def convert(tx_id):
         if conv and conv[1] == tx_id:
             return jsonify({"error": "Transaction already converted"}), 409
 
-    now = datetime.now()
+    now = _now()
     date_str = now.strftime("%d-%m-%Y")
-    time_str = now.strftime("%H:%M")
+    time_str = now.strftime("%I:%M %p")
     amount = row[3]
     sender = row[4] or "UPI Payment"
 
