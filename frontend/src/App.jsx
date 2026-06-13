@@ -18,7 +18,7 @@ import {
   periodLabel,
   activeIncome,
 } from "./utils/dateFilter";
-import { currentTime, formatDateTime } from "./utils/format";
+import { formatDateTime } from "./utils/format";
 
 const MODES = ["Cash", "UPI"];
 
@@ -206,7 +206,6 @@ function IncomeView({ records, onSubmit }) {
     name: "",
     amount: "",
     mode: "Cash",
-    time: currentTime(),
   });
 
   function handleChange(e) {
@@ -217,7 +216,7 @@ function IncomeView({ records, onSubmit }) {
     e.preventDefault();
     if (!form.name || !form.amount) return;
     onSubmit(form);
-    setForm({ name: "", amount: "", mode: "Cash", time: currentTime() });
+    setForm({ name: "", amount: "", mode: "Cash" });
   }
 
   return (
@@ -249,17 +248,6 @@ function IncomeView({ records, onSubmit }) {
                 value={form.amount}
                 onChange={handleChange}
                 placeholder="0"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="inc-time">Time</label>
-              <input
-                id="inc-time"
-                name="time"
-                type="time"
-                value={form.time}
-                onChange={handleChange}
                 required
               />
             </div>
@@ -616,7 +604,6 @@ export default function App() {
         name: form.name,
         amount: form.amount,
         mode: form.mode,
-        time: form.time,
       });
       const queued = form.mode === "UPI";
       setToast({
