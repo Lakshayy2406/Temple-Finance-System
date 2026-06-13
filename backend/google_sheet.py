@@ -41,7 +41,7 @@ def ensure_settings_sheet():
     if "Settings" not in titles:
         ws = db.add_worksheet("Settings", rows=10, cols=3)
         ws.append_row(["Temple Name", "Address", "Contact"])
-        ws.append_row(["Temple Finance System", "Finance System", ""])
+        ws.append_row(["Temple Finance System", "Neelkanth Mahadev Mandir, Gulab Bari Ajmer", ""])
 
 
 # def ensure_upi_sheets():

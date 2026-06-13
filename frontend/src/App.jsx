@@ -21,6 +21,7 @@ import {
 import { formatDateTime } from "./utils/format";
 
 const MODES = ["Cash", "UPI"];
+const TEMPLE_ADDRESS = "Neelkanth Mahadev Mandir, Gulab Bari Ajmer";
 
 function recordMatchesSearch(record, fields, query) {
   const term = query.trim().toLowerCase();
@@ -708,6 +709,10 @@ export default function App() {
 
   const meta = PAGE_META[tab];
   const templeName = settings.temple_name || "Temple Finance System";
+  const templeAddress =
+    !settings.address || settings.address === "Finance System"
+      ? TEMPLE_ADDRESS
+      : settings.address;
   const activePeriodLabel = periodLabel(period, customRange);
 
   return (
@@ -717,7 +722,7 @@ export default function App() {
           <div className="brand-icon">🛕</div>
           <div>
             <h1>{templeName}</h1>
-            <p>{settings.address || "Neelkanth Mahadev Mandir, Gulab Bari Ajmer"}</p>
+            <p>{templeAddress}</p>
           </div>
         </div>
 
