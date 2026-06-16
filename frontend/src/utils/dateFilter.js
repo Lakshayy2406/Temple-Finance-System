@@ -9,6 +9,10 @@ export const PERIODS = [
 
 export function parseSheetDate(dateStr) {
   if (!dateStr) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    const d = new Date(dateStr);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
   const [d, m, y] = dateStr.split("-").map(Number);
   if (!d || !m || !y) return null;
   return new Date(y, m - 1, d);

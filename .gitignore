@@ -1,1 +1,18 @@
-backend/credentials.json
+# Environment
+.env
+.env.local
+
+# Credentials
+credentials.json
+**/credentials.json
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build
+dist/
+**/dist/
+
+# Cache
+.cache

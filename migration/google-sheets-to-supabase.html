@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google Sheets to Supabase Migration</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 760px; }
+      label { display: block; font-weight: 700; margin-top: 1rem; }
+      input, textarea, select, button { width: 100%; padding: 0.7rem; margin-top: 0.35rem; }
+      textarea { min-height: 140px; font-family: ui-monospace, monospace; }
+      button { cursor: pointer; font-weight: 700; }
+      pre { background: #f5f5f5; padding: 1rem; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>Google Sheets to Supabase Migration</h1>
+    <p>Export each Google Sheet tab as CSV, sign in as an authenticated Supabase admin, then import Income and Expense rows.</p>
+
+    <label>Supabase URL</label>
+    <input id="url" placeholder="https://your-project-ref.supabase.co" />
+
+    <label>Supabase anon key</label>
+    <input id="key" placeholder="anon public key" />
+
+    <label>Admin email</label>
+    <input id="email" type="email" />
+
+    <label>Admin password</label>
+    <input id="password" type="password" />
+
+    <label>Sheet type</label>
+    <select id="type">
+      <option value="income">Income</option>
+      <option value="expense">Expense</option>
+    </select>
+
+    <label>CSV data</label>
+    <textarea id="csv" placeholder="Paste exported CSV here"></textarea>
+
+    <button id="run">Import rows</button>
+    <pre id="output">Ready.</pre>
+
+    <script type="module">
+      import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+      const output = document.querySelector("#output");
+
+      function log(message) {
+        output.textContent = message;
+      }
+
+      function parseCsv(text) {
+        const rows = [];
+        let row = [];
+        let cell = "";
+        let quoted = false;
+        for (let i = 0; i < text.length; i += 1) {
+          const char = text[i];
+          const next = text[i + 1];
+          if (char === '"' && quoted && next === '"') {
+            cell += '"';
+            i += 1;
+          } else if (char === '"') {
+            quoted = !quoted;
+          } else if (char === "," && !quoted) {
+            row.push(cell);
+            cell = "";
+          } else if ((char === "\n" || char === "\r") && !quoted) {
+            if (char === "\r" && next === "\n") i += 1;
+            row.push(cell);
+            if (row.some(Boolean)) rows.push(row);
+            row = [];
+            cell = "";
+          } else {
+            cell += char;
+          }
+        }
+        row.push(cell);
+        if (row.some(Boolean)) rows.push(row);
+        return rows;
+      }
+
+      function parseDate(value) {
+        const raw = String(value || "").trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+        const parts = raw.split(/[-/]/).map(Number);
+        if (parts.length === 3) {
+          const [d, m, y] = parts;
+          return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        }
+        return new Date().toISOString().slice(0, 10);
+      }
+
+      function mapRows(csvText, type, userId) {
+        const rows = parseCsv(csvText);
+        const headers = rows.shift().map((h) => h.trim().toLowerCase());
+        const index = (name) => headers.findIndex((h) => h === name.toLowerCase());
+        return rows.map((row) => ({
+          date: parseDate(row[index("Date")]),
+          type,
+          category: row[index("Mode")] || row[index("Category")] || "General",
+          description: type === "income"
+            ? row[index("Name")] || row[index("Description")] || ""
+            : row[index("Title")] || row[index("Description")] || "",
+          amount: Number(row[index("Amount")] || 0),
+          created_by: userId,
+        })).filter((row) => row.description && row.amount > 0);
+      }
+
+      document.querySelector("#run").addEventListener("click", async () => {
+        try {
+          const client = createClient(
+            document.querySelector("#url").value.trim(),
+            document.querySelector("#key").value.trim()
+          );
+          const { data: auth, error: authError } = await client.auth.signInWithPassword({
+            email: document.querySelector("#email").value.trim(),
+            password: document.querySelector("#password").value,
+          });
+          if (authError) throw authError;
+
+          const rows = mapRows(
+            document.querySelector("#csv").value,
+            document.querySelector("#type").value,
+            auth.user.id
+          );
+          const { error } = await client.from("transactions").insert(rows);
+          if (error) throw error;
+          log(`Imported ${rows.length} transaction(s).`);
+        } catch (error) {
+          log(error.message || String(error));
+        }
+      });
+    </script>
+  </body>
+</html>
