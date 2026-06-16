@@ -27,20 +27,22 @@ import {
 const TEMPLE_NAME = "Temple Finance System";
 const TEMPLE_ADDRESS = "Neelkanth Mahadev Mandir, Gulab Bari Ajmer";
 const MODES = ["Cash", "UPI"];
+const UPI_CONVERTED_MODE = "UPI Converted";
 
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
 function toIncomeRow(row) {
-  const isConverted = row.category === "Cash" && row.updated_at !== row.created_at;
+  const isConverted = row.category === UPI_CONVERTED_MODE;
+  const mode = isConverted ? "Cash" : row.category || "General";
   return {
     ...row,
     Date: row.date,
     Time: row.created_at,
     Name: row.description || "-",
     Amount: row.amount,
-    Mode: row.category || "General",
+    Mode: mode,
     Sender: row.description || "-",
     Reference: `TX-${String(row.id).slice(0, 8).toUpperCase()}`,
     Status: isConverted ? "Converted" : row.category === "UPI" ? "Pending" : "Recorded",
@@ -657,7 +659,7 @@ export default function App() {
   const convertedUpi = useMemo(
     () =>
       incomeRows.filter(
-        (row) => row.Mode === "Cash" && row.updated_at && row.updated_at !== row.created_at
+        (row) => row.category === UPI_CONVERTED_MODE
       ),
     [incomeRows]
   );
@@ -765,7 +767,7 @@ export default function App() {
       await updateTransaction(tx.id, {
         date: tx.date,
         type: "income",
-        category: "Cash",
+        category: UPI_CONVERTED_MODE,
         description: tx.description,
         amount: tx.amount,
       });
