@@ -37,7 +37,7 @@ const MODES = ["Cash", "UPI"];
 const UPI_CONVERTED_MODE = "UPI Converted";
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toISOString();
 }
 
 function toIncomeRow(row) {
@@ -744,7 +744,7 @@ export default function App() {
     setConverting(tx["Transaction ID"]);
     try {
       await updateTransaction(tx.id, {
-        date: tx.date,
+        date: new Date().toISOString(),
         type: "income",
         category: UPI_CONVERTED_MODE,
         description: tx.description,

@@ -24,7 +24,7 @@ function requireClient() {
 
 function normalizeTransaction(input) {
   return {
-    date: input.date,
+    date: input.date || new Date().toISOString(),
     type: input.type,
     category: input.category?.trim() || null,
     description: input.description?.trim() || null,
@@ -62,8 +62,8 @@ export async function addTransaction(transaction) {
 
   const payload = {
     ...normalizeTransaction(transaction),
+    date: new Date().toISOString(),
     created_by: userData.user?.id ?? null,
-    created_at: new Date().toISOString(),
   };
 
   const { data, error } = await requireClient()
