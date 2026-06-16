@@ -11,7 +11,14 @@ import {
   onAuthStateChange,
   updateTransaction,
 } from "./supabase";
-import { PERIODS, filterByPeriod, sumAmount, periodLabel } from "./utils/dateFilter";
+import {
+  PERIODS,
+  filterByPeriod,
+  getTransactionDate,
+  periodLabel,
+  sortByTransactionDateDesc,
+  sumAmount,
+} from "./utils/dateFilter";
 import { formatIndianDateTime } from "./utils/format";
 import {
   downloadDashboardExcel,
@@ -39,7 +46,7 @@ function toIncomeRow(row) {
   return {
     ...row,
     Date: row.date,
-    Time: row.created_at,
+    Time: getTransactionDate(row),
     Name: row.description || "-",
     Amount: row.amount,
     Mode: mode,
@@ -261,8 +268,8 @@ function EmptyTable({ icon, text }) {
 }
 
 function DashboardView({ income, expense }) {
-  const recentIncome = [...income].reverse().slice(0, 5);
-  const recentExpense = [...expense].reverse().slice(0, 5);
+  const recentIncome = income.slice(0, 5);
+  const recentExpense = expense.slice(0, 5);
   const totalIncome = sumAmount(income);
   const totalExpense = sumAmount(expense);
 
@@ -282,22 +289,13 @@ function DashboardView({ income, expense }) {
   );
 }
 
-function TransactionForm({ type, initialRecord, onSubmit, onCancel, saving }) {
+function TransactionForm({ type, onSubmit, saving }) {
   const [form, setForm] = useState({
-    date: initialRecord?.date || today(),
-    description: initialRecord?.description || "",
-    amount: initialRecord?.amount || "",
-    category: initialRecord?.category || "Cash",
+    date: today(),
+    description: "",
+    amount: "",
+    category: "Cash",
   });
-
-  useEffect(() => {
-    setForm({
-      date: initialRecord?.date || today(),
-      description: initialRecord?.description || "",
-      amount: initialRecord?.amount || "",
-      category: initialRecord?.category || "Cash",
-    });
-  }, [initialRecord]);
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -342,18 +340,13 @@ function TransactionForm({ type, initialRecord, onSubmit, onCancel, saving }) {
         <ModeToggle value={form.category} onChange={handleChange} name="category" />
       </div>
       <button type="submit" className={`btn btn-primary ${isExpense ? "btn-expense" : ""}`} disabled={saving}>
-        {saving ? "Saving..." : initialRecord ? "Update Record" : `Record ${isExpense ? "Expense" : "Income"}`}
+        {saving ? "Saving..." : `Record ${isExpense ? "Expense" : "Income"}`}
       </button>
-      {initialRecord && (
-        <button type="button" className="btn btn-ghost" onClick={onCancel}>
-          Cancel edit
-        </button>
-      )}
     </form>
   );
 }
 
-function RecordTable({ title, records, type, readOnly = false, onEdit, onDelete, deletingId }) {
+function RecordTable({ title, records, type, readOnly = false, onDelete, deletingId }) {
   const isExpense = type === "expense";
 
   return (
@@ -380,9 +373,9 @@ function RecordTable({ title, records, type, readOnly = false, onEdit, onDelete,
               </tr>
             </thead>
             <tbody>
-              {[...records].reverse().map((row) => (
+              {records.map((row) => (
                 <tr key={row.id}>
-                  <td className="date-cell">{formatIndianDateTime(row.created_at)}</td>
+                  <td className="date-cell">{formatIndianDateTime(getTransactionDate(row))}</td>
                   <td className="name-cell">{isExpense ? row.Title : row.Name}</td>
                   <td className={`amount-cell ${isExpense ? "expense" : ""}`}>{formatCurrency(row.Amount)}</td>
                   <td>
@@ -391,9 +384,6 @@ function RecordTable({ title, records, type, readOnly = false, onEdit, onDelete,
                   {!readOnly && (
                     <td>
                       <div className="table-actions">
-                        <button type="button" className="link-btn" onClick={() => onEdit(row)}>
-                          Edit
-                        </button>
                         <button
                           type="button"
                           className="link-btn danger"
@@ -419,10 +409,7 @@ function TransactionView({
   type,
   records,
   onSubmit,
-  onEdit,
   onDelete,
-  editing,
-  onCancelEdit,
   saving,
   deletingId,
 }) {
@@ -432,14 +419,12 @@ function TransactionView({
     <div className="layout-split">
       <div className="panel form-panel">
         <div className="panel-header">
-          <h3>{editing ? "Edit" : "Add"} {isExpense ? "Expense" : "Income"}</h3>
+          <h3>Add {isExpense ? "Expense" : "Income"}</h3>
         </div>
         <div className="panel-body">
           <TransactionForm
             type={type}
-            initialRecord={editing}
             onSubmit={onSubmit}
-            onCancel={onCancelEdit}
             saving={saving}
           />
         </div>
@@ -448,7 +433,6 @@ function TransactionView({
         title={`${isExpense ? "Expense" : "Income"} Records`}
         records={records}
         type={type}
-        onEdit={onEdit}
         onDelete={onDelete}
         deletingId={deletingId}
       />
@@ -500,7 +484,7 @@ function UpiConversionView({
                   <span className="upi-card-amount">{formatCurrency(tx.Amount)}</span>
                   <span className="upi-card-sender">{tx.Sender}</span>
                   <span className="upi-card-meta">
-                    {formatIndianDateTime(tx.created_at)}
+                    {formatIndianDateTime(getTransactionDate(tx))}
                     {tx.Reference && ` · Ref: ${tx.Reference}`}
                   </span>
                 </div>
@@ -537,9 +521,9 @@ function UpiConversionView({
                 </tr>
               </thead>
               <tbody>
-                {[...converted].reverse().map((row) => (
+                {converted.map((row) => (
                   <tr key={row.id}>
-                    <td className="date-cell">{formatIndianDateTime(row.updated_at || row.created_at)}</td>
+                    <td className="date-cell">{formatIndianDateTime(getTransactionDate(row))}</td>
                     <td className="mono-cell">{row["Transaction ID"]}</td>
                     <td className="amount-cell">{formatCurrency(row.Amount)}</td>
                     <td>
@@ -584,7 +568,6 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [converting, setConverting] = useState(null);
-  const [editing, setEditing] = useState(null);
   const [toast, setToast] = useState(null);
   const [period, setPeriod] = useState("all");
   const [customRange, setCustomRange] = useState({ from: "", to: "" });
@@ -639,15 +622,19 @@ export default function App() {
 
   const filteredIncome = useMemo(() => {
     const periodRecords = filterByPeriod(incomeRows, period, customRange);
-    return periodRecords.filter((row) =>
-      recordMatchesSearch(row, ["Name", "Amount", "Mode", "Date"], searchQuery)
+    return sortByTransactionDateDesc(
+      periodRecords.filter((row) =>
+        recordMatchesSearch(row, ["Name", "Amount", "Mode", "Date"], searchQuery)
+      )
     );
   }, [incomeRows, period, customRange, searchQuery]);
 
   const filteredExpense = useMemo(() => {
     const periodRecords = filterByPeriod(expenseRows, period, customRange);
-    return periodRecords.filter((row) =>
-      recordMatchesSearch(row, ["Title", "Amount", "Mode", "Date"], searchQuery)
+    return sortByTransactionDateDesc(
+      periodRecords.filter((row) =>
+        recordMatchesSearch(row, ["Title", "Amount", "Mode", "Date"], searchQuery)
+      )
     );
   }, [expenseRows, period, customRange, searchQuery]);
 
@@ -667,11 +654,13 @@ export default function App() {
   const filteredPendingUpi = useMemo(
     () => {
       const periodRecords = filterByPeriod(pendingUpi, period, customRange);
-      return periodRecords.filter((row) =>
-        recordMatchesSearch(
-          row,
-          ["Sender", "Transaction ID", "Reference", "Amount", "Date", "Time"],
-          searchQuery
+      return sortByTransactionDateDesc(
+        periodRecords.filter((row) =>
+          recordMatchesSearch(
+            row,
+            ["Sender", "Transaction ID", "Reference", "Amount", "Date", "Time"],
+            searchQuery
+          )
         )
       );
     },
@@ -681,11 +670,13 @@ export default function App() {
   const filteredConvertedUpi = useMemo(
     () => {
       const periodRecords = filterByPeriod(convertedUpi, period, customRange);
-      return periodRecords.filter((row) =>
-        recordMatchesSearch(
-          row,
-          ["Transaction ID", "Cash Income Ref", "Amount", "Date", "Time"],
-          searchQuery
+      return sortByTransactionDateDesc(
+        periodRecords.filter((row) =>
+          recordMatchesSearch(
+            row,
+            ["Transaction ID", "Cash Income Ref", "Amount", "Date", "Time"],
+            searchQuery
+          )
         )
       );
     },
@@ -724,25 +715,14 @@ export default function App() {
   async function handleSubmit(form) {
     setSaving(true);
     try {
-      if (editing) {
-        await updateTransaction(editing.id, form);
-        setToast({ message: "Record updated successfully", type: "success" });
-        setEditing(null);
-      } else {
-        await addTransaction(form);
-        setToast({ message: "Record saved successfully", type: "success" });
-      }
+      await addTransaction(form);
+      setToast({ message: "Record saved successfully", type: "success" });
       await load();
     } catch (err) {
       setToast({ message: err.message || "Failed to save record", type: "error" });
     } finally {
       setSaving(false);
     }
-  }
-
-  function handleEdit(row) {
-    setEditing(row);
-    setTab(row.type);
   }
 
   async function handleDelete(id) {
@@ -752,7 +732,6 @@ export default function App() {
     try {
       await deleteTransaction(id);
       setToast({ message: "Record deleted", type: "success" });
-      if (editing?.id === id) setEditing(null);
       await load();
     } catch (err) {
       setToast({ message: err.message || "Failed to delete record", type: "error" });
@@ -853,7 +832,6 @@ export default function App() {
               className={`nav-btn ${tab === item.id ? "active" : ""}`}
               onClick={() => {
                 setTab(item.id);
-                setEditing(null);
               }}
             >
               <span className="nav-icon">{item.icon}</span>
@@ -912,10 +890,7 @@ export default function App() {
                 type="income"
                 records={filteredIncome}
                 onSubmit={handleSubmit}
-                onEdit={handleEdit}
                 onDelete={handleDelete}
-                editing={editing?.type === "income" ? editing : null}
-                onCancelEdit={() => setEditing(null)}
                 saving={saving}
                 deletingId={deletingId}
               />
@@ -934,10 +909,7 @@ export default function App() {
                 type="expense"
                 records={filteredExpense}
                 onSubmit={handleSubmit}
-                onEdit={handleEdit}
                 onDelete={handleDelete}
-                editing={editing?.type === "expense" ? editing : null}
-                onCancelEdit={() => setEditing(null)}
                 saving={saving}
                 deletingId={deletingId}
               />

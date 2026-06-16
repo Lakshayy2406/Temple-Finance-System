@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { getTransactionDate, sortByTransactionDateDesc } from "./dateFilter";
 import { formatIndianDateTime } from "./format";
 
 const TEMPLE_NAME = "Temple Finance System";
@@ -71,9 +72,9 @@ function sheetFromRows(rows) {
 }
 
 function incomeRows(records) {
-  return records.map((row, index) => [
+  return sortByTransactionDateDesc(records).map((row, index) => [
     index + 1,
-    formatIndianDateTime(row.created_at),
+    formatIndianDateTime(getTransactionDate(row)),
     row.Name,
     Number(row.Amount || 0),
     row.Mode,
@@ -81,9 +82,9 @@ function incomeRows(records) {
 }
 
 function expenseRows(records) {
-  return records.map((row, index) => [
+  return sortByTransactionDateDesc(records).map((row, index) => [
     index + 1,
-    formatIndianDateTime(row.created_at),
+    formatIndianDateTime(getTransactionDate(row)),
     row.Title,
     Number(row.Amount || 0),
     row.Mode,
@@ -108,8 +109,8 @@ export function downloadDashboardPdf({ income, expense, summary }) {
   autoTable(doc, {
     startY: addTableTitle(doc, "Income Records", doc.lastAutoTable.finalY + 12),
     head: [["Date & Time (IST)", "Donor Name", "Amount", "Payment Mode"]],
-    body: income.map((row) => [
-      formatIndianDateTime(row.created_at),
+    body: sortByTransactionDateDesc(income).map((row) => [
+      formatIndianDateTime(getTransactionDate(row)),
       row.Name,
       formatAmount(row.Amount),
       row.Mode,
@@ -120,8 +121,8 @@ export function downloadDashboardPdf({ income, expense, summary }) {
   autoTable(doc, {
     startY: addTableTitle(doc, "Expense Records", doc.lastAutoTable.finalY + 12),
     head: [["Date & Time (IST)", "Title", "Amount", "Payment Mode"]],
-    body: expense.map((row) => [
-      formatIndianDateTime(row.created_at),
+    body: sortByTransactionDateDesc(expense).map((row) => [
+      formatIndianDateTime(getTransactionDate(row)),
       row.Title,
       formatAmount(row.Amount),
       row.Mode,
@@ -243,8 +244,8 @@ export function downloadUpiPdf({ pending, converted }) {
   autoTable(doc, {
     startY: addTableTitle(doc, "Pending UPI Transactions", 70),
     head: [["Date", "Donor Name", "Amount"]],
-    body: pending.map((row) => [
-      formatIndianDateTime(row.created_at),
+    body: sortByTransactionDateDesc(pending).map((row) => [
+      formatIndianDateTime(getTransactionDate(row)),
       row.Name,
       formatAmount(row.Amount),
     ]),
@@ -253,8 +254,8 @@ export function downloadUpiPdf({ pending, converted }) {
   autoTable(doc, {
     startY: addTableTitle(doc, "Conversion History", doc.lastAutoTable.finalY + 12),
     head: [["Conversion Date", "Amount Converted"]],
-    body: converted.map((row) => [
-      formatIndianDateTime(row.updated_at || row.created_at),
+    body: sortByTransactionDateDesc(converted).map((row) => [
+      formatIndianDateTime(getTransactionDate(row)),
       formatAmount(row.Amount),
     ]),
     theme: "grid",
@@ -272,8 +273,8 @@ export function downloadUpiExcel({ pending, converted }) {
       ["Report Generated", formatIndianDateTime(new Date().toISOString())],
       [],
       ["Date", "Donor Name", "Amount"],
-      ...pending.map((row) => [
-        formatIndianDateTime(row.created_at),
+      ...sortByTransactionDateDesc(pending).map((row) => [
+        formatIndianDateTime(getTransactionDate(row)),
         row.Name,
         Number(row.Amount || 0),
       ]),
@@ -284,8 +285,8 @@ export function downloadUpiExcel({ pending, converted }) {
     workbook,
     sheetFromRows([
       ["Conversion Date", "Amount Converted"],
-      ...converted.map((row) => [
-        formatIndianDateTime(row.updated_at || row.created_at),
+      ...sortByTransactionDateDesc(converted).map((row) => [
+        formatIndianDateTime(getTransactionDate(row)),
         Number(row.Amount || 0),
       ]),
     ]),

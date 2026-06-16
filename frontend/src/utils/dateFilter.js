@@ -18,6 +18,16 @@ export function parseSheetDate(dateStr) {
   return new Date(y, m - 1, d);
 }
 
+export function getTransactionDate(record) {
+  return record?.date || record?.Date || record?.created_at || "";
+}
+
+export function sortByTransactionDateDesc(records) {
+  return [...records].sort(
+    (a, b) => new Date(getTransactionDate(b)) - new Date(getTransactionDate(a))
+  );
+}
+
 function startOfDay(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -69,7 +79,9 @@ export function isInPeriod(dateStr, period, customRange = {}) {
 }
 
 export function filterByPeriod(records, period, customRange) {
-  return records.filter((row) => isInPeriod(row.Date, period, customRange));
+  return records.filter((row) =>
+    isInPeriod(getTransactionDate(row), period, customRange)
+  );
 }
 
 export function sumAmount(records) {
