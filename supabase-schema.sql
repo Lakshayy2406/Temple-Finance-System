@@ -10,9 +10,13 @@ create table if not exists public.transactions (
   description text,
   amount numeric(12, 2) not null check (amount >= 0),
   created_by uuid references auth.users(id) on delete set null,
+  converted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.transactions
+add column if not exists converted_at timestamptz;
 
 create index if not exists transactions_date_idx on public.transactions (date desc);
 create index if not exists transactions_type_idx on public.transactions (type);

@@ -22,9 +22,19 @@ export function getTransactionDate(record) {
   return record?.date || record?.Date || record?.created_at || "";
 }
 
+export function getConversionDate(record) {
+  return record?.converted_at || getTransactionDate(record);
+}
+
 export function sortByTransactionDateDesc(records) {
   return [...records].sort(
     (a, b) => new Date(getTransactionDate(b)) - new Date(getTransactionDate(a))
+  );
+}
+
+export function sortByConversionDateDesc(records) {
+  return [...records].sort(
+    (a, b) => new Date(getConversionDate(b)) - new Date(getConversionDate(a))
   );
 }
 

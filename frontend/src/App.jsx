@@ -14,8 +14,11 @@ import {
 import {
   PERIODS,
   filterByPeriod,
+  getConversionDate,
   getTransactionDate,
+  isInPeriod,
   periodLabel,
+  sortByConversionDateDesc,
   sortByTransactionDateDesc,
   sumAmount,
 } from "./utils/dateFilter";
@@ -523,7 +526,7 @@ function UpiConversionView({
               <tbody>
                 {converted.map((row) => (
                   <tr key={row.id}>
-                    <td className="date-cell">{formatIndianDateTime(getTransactionDate(row))}</td>
+                    <td className="date-cell">{formatIndianDateTime(getConversionDate(row))}</td>
                     <td className="mono-cell">{row["Transaction ID"]}</td>
                     <td className="amount-cell">{formatCurrency(row.Amount)}</td>
                     <td>
@@ -669,9 +672,9 @@ export default function App() {
 
   const filteredConvertedUpi = useMemo(
     () => {
-      const periodRecords = filterByPeriod(convertedUpi, period, customRange);
-      return sortByTransactionDateDesc(
-        periodRecords.filter((row) =>
+      return sortByConversionDateDesc(
+        convertedUpi.filter((row) =>
+          isInPeriod(getConversionDate(row), period, customRange) &&
           recordMatchesSearch(
             row,
             ["Transaction ID", "Cash Income Ref", "Amount", "Date", "Time"],
@@ -744,11 +747,11 @@ export default function App() {
     setConverting(tx["Transaction ID"]);
     try {
       await updateTransaction(tx.id, {
-        date: new Date().toISOString(),
         type: "income",
         category: UPI_CONVERTED_MODE,
         description: tx.description,
         amount: tx.amount,
+        converted_at: new Date().toISOString(),
       });
       setToast({
         message: `${formatCurrency(tx.Amount)} converted to cash`,

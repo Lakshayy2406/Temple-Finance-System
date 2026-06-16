@@ -22,14 +22,25 @@ function requireClient() {
   return supabase;
 }
 
-function normalizeTransaction(input) {
-  return {
-    date: input.date || new Date().toISOString(),
+function normalizeTransaction(input, { includeDate = false } = {}) {
+  const payload = {
     type: input.type,
     category: input.category?.trim() || null,
     description: input.description?.trim() || null,
     amount: Number(input.amount),
   };
+
+  if (includeDate) {
+    payload.date = input.date || new Date().toISOString();
+  } else if (input.date) {
+    payload.date = input.date;
+  }
+
+  if (input.converted_at) {
+    payload.converted_at = input.converted_at;
+  }
+
+  return payload;
 }
 
 export async function loginAdmin(email, password) {
@@ -61,7 +72,7 @@ export async function addTransaction(transaction) {
   if (userError) throw userError;
 
   const payload = {
-    ...normalizeTransaction(transaction),
+    ...normalizeTransaction(transaction, { includeDate: true }),
     date: new Date().toISOString(),
     created_by: userData.user?.id ?? null,
   };

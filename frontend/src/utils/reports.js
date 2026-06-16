@@ -1,7 +1,12 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import { getTransactionDate, sortByTransactionDateDesc } from "./dateFilter";
+import {
+  getConversionDate,
+  getTransactionDate,
+  sortByConversionDateDesc,
+  sortByTransactionDateDesc,
+} from "./dateFilter";
 import { formatIndianDateTime } from "./format";
 
 const TEMPLE_NAME = "Temple Finance System";
@@ -254,8 +259,8 @@ export function downloadUpiPdf({ pending, converted }) {
   autoTable(doc, {
     startY: addTableTitle(doc, "Conversion History", doc.lastAutoTable.finalY + 12),
     head: [["Conversion Date", "Amount Converted"]],
-    body: sortByTransactionDateDesc(converted).map((row) => [
-      formatIndianDateTime(getTransactionDate(row)),
+    body: sortByConversionDateDesc(converted).map((row) => [
+      formatIndianDateTime(getConversionDate(row)),
       formatAmount(row.Amount),
     ]),
     theme: "grid",
@@ -285,8 +290,8 @@ export function downloadUpiExcel({ pending, converted }) {
     workbook,
     sheetFromRows([
       ["Conversion Date", "Amount Converted"],
-      ...sortByTransactionDateDesc(converted).map((row) => [
-        formatIndianDateTime(getTransactionDate(row)),
+      ...sortByConversionDateDesc(converted).map((row) => [
+        formatIndianDateTime(getConversionDate(row)),
         Number(row.Amount || 0),
       ]),
     ]),
