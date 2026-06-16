@@ -1,9 +1,11 @@
 {
+  "homepage": "https://lakshayy2406.github.io/Temple-Finance-System/",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
+  "dev": "vite",
+  "build": "vite build",
+  "predeploy": "npm run build",
+  "deploy": "gh-pages -d dist"
+},
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
     "@vitejs/plugin-react": "latest",
@@ -14,5 +16,8 @@
     "react-dom": "latest",
     "vite": "latest",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
   }
 }
