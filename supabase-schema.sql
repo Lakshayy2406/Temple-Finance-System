@@ -188,11 +188,6 @@ to authenticated
 using (true)
 with check (created_by is null or auth.uid() = created_by);
 
-create policy "Admins can delete transactions"
-on public.transactions
-for delete
-to authenticated
-using (true);
-
 grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on public.transactions to authenticated;
+revoke delete on public.transactions from authenticated;
+grant select, insert, update on public.transactions to authenticated;

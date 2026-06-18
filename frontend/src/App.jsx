@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   addTransaction,
   checkAuth,
-  deleteTransaction,
   formatCurrency,
   getTransactions,
   isSupabaseConfigured,
@@ -437,7 +436,7 @@ function TransactionForm({ type, onSubmit, saving }) {
   );
 }
 
-function RecordTable({ title, records, type, readOnly = false, onDelete, deletingId, onViewReceipt }) {
+function RecordTable({ title, records, type, readOnly = false, onViewReceipt }) {
   const isExpense = type === "expense";
 
   return (
@@ -461,7 +460,6 @@ function RecordTable({ title, records, type, readOnly = false, onDelete, deletin
                 <th>Amount</th>
                 <th>Mode</th>
                 {!isExpense && <th>Receipt</th>}
-                {!readOnly && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -481,20 +479,6 @@ function RecordTable({ title, records, type, readOnly = false, onDelete, deletin
                     </td>
                   )}
                   {!isExpense && !row.HasReceipt && <td className="date-cell">-</td>}
-                  {!readOnly && (
-                    <td>
-                      <div className="table-actions">
-                        <button
-                          type="button"
-                          className="link-btn danger"
-                          disabled={deletingId === row.id}
-                          onClick={() => onDelete(row.id)}
-                        >
-                          {deletingId === row.id ? "Deleting..." : "Delete"}
-                        </button>
-                      </div>
-                    </td>
-                  )}
                 </tr>
               ))}
             </tbody>
@@ -509,10 +493,8 @@ function TransactionView({
   type,
   records,
   onSubmit,
-  onDelete,
   onViewReceipt,
   saving,
-  deletingId,
 }) {
   const isExpense = type === "expense";
 
@@ -534,8 +516,6 @@ function TransactionView({
         title={`${isExpense ? "Expense" : "Income"} Records`}
         records={records}
         type={type}
-        onDelete={onDelete}
-        deletingId={deletingId}
         onViewReceipt={onViewReceipt}
       />
     </div>
@@ -668,7 +648,6 @@ export default function App() {
   const [loginError, setLoginError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
   const [converting, setConverting] = useState(null);
   const [toast, setToast] = useState(null);
   const [period, setPeriod] = useState("all");
@@ -830,21 +809,6 @@ export default function App() {
       setToast({ message: err.message || "Failed to save record", type: "error" });
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleDelete(id) {
-    const confirmed = window.confirm("Delete this transaction?");
-    if (!confirmed) return;
-    setDeletingId(id);
-    try {
-      await deleteTransaction(id);
-      setToast({ message: "Record deleted", type: "success" });
-      await load();
-    } catch (err) {
-      setToast({ message: err.message || "Failed to delete record", type: "error" });
-    } finally {
-      setDeletingId(null);
     }
   }
 
@@ -1013,10 +977,8 @@ export default function App() {
                 type="income"
                 records={filteredIncome}
                 onSubmit={handleSubmit}
-                onDelete={handleDelete}
                 onViewReceipt={setActiveReceipt}
                 saving={saving}
-                deletingId={deletingId}
               />
             )}
             {tab === "upi" && (
@@ -1033,10 +995,8 @@ export default function App() {
                 type="expense"
                 records={filteredExpense}
                 onSubmit={handleSubmit}
-                onDelete={handleDelete}
                 onViewReceipt={setActiveReceipt}
                 saving={saving}
-                deletingId={deletingId}
               />
             )}
           </>

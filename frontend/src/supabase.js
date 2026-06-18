@@ -111,11 +111,6 @@ export async function updateTransaction(id, transaction) {
   return data;
 }
 
-export async function deleteTransaction(id) {
-  const { error } = await requireClient().from("transactions").delete().eq("id", id);
-  if (error) throw error;
-}
-
 export const formatCurrency = (value) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
