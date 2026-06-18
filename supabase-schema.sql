@@ -43,14 +43,25 @@ set search_path = public
 as $$
 declare
   next_number integer;
+  candidate_receipt text;
 begin
-  insert into public.receipt_counters(receipt_year, last_number)
-  values (receipt_year, 1)
-  on conflict (receipt_year)
-  do update set last_number = public.receipt_counters.last_number + 1
-  returning last_number into next_number;
+  loop
+    insert into public.receipt_counters(receipt_year, last_number)
+    values (receipt_year, 1)
+    on conflict (receipt_year)
+    do update set last_number = public.receipt_counters.last_number + 1
+    returning last_number into next_number;
 
-  return '#' || receipt_year || '-' || lpad(next_number::text, 4, '0');
+    candidate_receipt = '#' || receipt_year || '-' || lpad(next_number::text, 4, '0');
+
+    if not exists (
+      select 1
+      from public.transactions
+      where receipt_no = candidate_receipt
+    ) then
+      return candidate_receipt;
+    end if;
+  end loop;
 end;
 $$;
 
@@ -78,37 +89,6 @@ before insert on public.transactions
 for each row
 execute function public.set_income_receipt_no();
 
-with ordered_income as (
-  select
-    id,
-    public.receipt_year_from_transaction(date, created_at) as receipt_year,
-    row_number() over (
-      partition by public.receipt_year_from_transaction(date, created_at)
-      order by date asc, created_at asc, id asc
-    ) as receipt_number
-  from public.transactions
-  where type = 'income'
-    and coalesce(category, '') <> 'UPI Converted'
-    and nullif(trim(coalesce(receipt_no, '')), '') is null
-),
-updated_income as (
-  update public.transactions t
-  set receipt_no = '#' || o.receipt_year || '-' || lpad(o.receipt_number::text, 4, '0')
-  from ordered_income o
-  where t.id = o.id
-  returning o.receipt_year, o.receipt_number
-),
-max_numbers as (
-  select receipt_year, max(receipt_number) as last_number
-  from updated_income
-  group by receipt_year
-)
-insert into public.receipt_counters(receipt_year, last_number)
-select receipt_year, last_number
-from max_numbers
-on conflict (receipt_year)
-do update set last_number = greatest(public.receipt_counters.last_number, excluded.last_number);
-
 update public.transactions
 set receipt_no = null
 where type = 'income'
@@ -134,6 +114,27 @@ select receipt_year, last_number
 from max_existing
 on conflict (receipt_year)
 do update set last_number = greatest(public.receipt_counters.last_number, excluded.last_number);
+
+do $$
+declare
+  income_record record;
+begin
+  for income_record in
+    select
+      id,
+      public.receipt_year_from_transaction(date, created_at) as receipt_year
+    from public.transactions
+    where type = 'income'
+      and coalesce(category, '') <> 'UPI Converted'
+      and nullif(trim(coalesce(receipt_no, '')), '') is null
+    order by date asc, created_at asc, id asc
+  loop
+    update public.transactions
+    set receipt_no = public.next_receipt_no(income_record.receipt_year)
+    where id = income_record.id;
+  end loop;
+end;
+$$;
 
 create unique index if not exists transactions_receipt_no_unique_idx
 on public.transactions (receipt_no)

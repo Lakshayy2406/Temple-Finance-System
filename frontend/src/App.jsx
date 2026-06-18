@@ -59,7 +59,7 @@ function toIncomeRow(row) {
     Name: row.description || "-",
     Amount: row.amount,
     Mode: mode,
-    HasReceipt: !isConverted,
+    HasReceipt: !isConverted && Boolean(row.receipt_no),
     Sender: row.description || "-",
     Reference: `TX-${String(row.id).slice(0, 8).toUpperCase()}`,
     "Receipt No": row.receipt_no || "",
