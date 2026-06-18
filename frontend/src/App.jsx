@@ -851,13 +851,19 @@ export default function App() {
   async function handleConvertUpi(tx) {
     setConverting(tx["Transaction ID"]);
     try {
-      await updateTransaction(tx.id, {
+      const conversionUpdate = {
         type: "income",
         category: "Cash",
         description: tx.description,
         amount: tx.amount,
         converted_at: new Date().toISOString(),
-      });
+      };
+
+      if (tx.receipt_no) {
+        conversionUpdate.receipt_no = tx.receipt_no;
+      }
+
+      await updateTransaction(tx.id, conversionUpdate);
       setToast({
         message: `${formatCurrency(tx.Amount)} converted to cash`,
         type: "success",
