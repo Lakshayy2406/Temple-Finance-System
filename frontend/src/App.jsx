@@ -749,7 +749,7 @@ export default function App() {
   const convertedUpi = useMemo(
     () =>
       incomeRows.filter(
-        (row) => row.category === UPI_CONVERTED_MODE
+        (row) => row.category === UPI_CONVERTED_MODE || row.converted_at
       ),
     [incomeRows]
   );
@@ -853,11 +853,10 @@ export default function App() {
     try {
       await updateTransaction(tx.id, {
         type: "income",
-        category: UPI_CONVERTED_MODE,
+        category: "Cash",
         description: tx.description,
         amount: tx.amount,
         converted_at: new Date().toISOString(),
-        receipt_no: null,
       });
       setToast({
         message: `${formatCurrency(tx.Amount)} converted to cash`,
