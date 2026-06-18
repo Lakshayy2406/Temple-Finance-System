@@ -61,7 +61,7 @@ export function downloadReceiptPdf(receipt) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.text(RECEIPT_TEMPLE_NAME, width / 2, y, { align: "center" });
-  y += 8;
+  y += 12;
   doc.setFontSize(13);
   doc.text("DONATION RECEIPT", width / 2, y, { align: "center" });
   y += 9;
