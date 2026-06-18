@@ -79,6 +79,7 @@ function sheetFromRows(rows) {
 function incomeRows(records) {
   return sortByTransactionDateDesc(records).map((row, index) => [
     index + 1,
+    row["Receipt No"] || "",
     formatIndianDateTime(getTransactionDate(row)),
     row.Name,
     Number(row.Amount || 0),
@@ -113,8 +114,9 @@ export function downloadDashboardPdf({ income, expense, summary }) {
 
   autoTable(doc, {
     startY: addTableTitle(doc, "Income Records", doc.lastAutoTable.finalY + 12),
-    head: [["Date & Time (IST)", "Donor Name", "Amount", "Payment Mode"]],
+    head: [["Receipt No", "Date & Time (IST)", "Donor Name", "Amount", "Payment Mode"]],
     body: sortByTransactionDateDesc(income).map((row) => [
+      row["Receipt No"] || "",
       formatIndianDateTime(getTransactionDate(row)),
       row.Name,
       formatAmount(row.Amount),
@@ -157,7 +159,7 @@ export function downloadDashboardExcel({ income, expense, summary }) {
   XLSX.utils.book_append_sheet(
     workbook,
     sheetFromRows([
-      ["S.No", "Date & Time", "Donor Name", "Amount", "Payment Mode"],
+      ["S.No", "Receipt No", "Date & Time", "Donor Name", "Amount", "Payment Mode"],
       ...incomeRows(income),
     ]),
     "Income"
@@ -178,13 +180,14 @@ export function downloadIncomePdf(records) {
   addPdfHeader(doc, "Income Report");
   autoTable(doc, {
     startY: addTableTitle(doc, "Income Records", 70),
-    head: [["S.No", "Date & Time", "Donor Name", "Amount", "Payment Mode"]],
+    head: [["S.No", "Receipt No", "Date & Time", "Donor Name", "Amount", "Payment Mode"]],
     body: incomeRows(records).map((row) => [
       row[0],
       row[1],
       row[2],
-      formatAmount(row[3]),
-      row[4],
+      row[3],
+      formatAmount(row[4]),
+      row[5],
     ]),
     theme: "grid",
   });
@@ -200,7 +203,7 @@ export function downloadIncomeExcel(records) {
       [TEMPLE_ADDRESS],
       ["Report Generated", formatIndianDateTime(new Date().toISOString())],
       [],
-      ["S.No", "Date & Time", "Donor Name", "Amount", "Payment Mode"],
+      ["S.No", "Receipt No", "Date & Time", "Donor Name", "Amount", "Payment Mode"],
       ...incomeRows(records),
     ]),
     "Income Records"

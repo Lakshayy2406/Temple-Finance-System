@@ -24,6 +24,12 @@ import {
 } from "./utils/dateFilter";
 import { formatIndianDateTime } from "./utils/format";
 import {
+  RECEIPT_TEMPLE_NAME,
+  downloadReceiptPdf,
+  receiptAmount,
+  receiptParts,
+} from "./utils/receipt";
+import {
   downloadDashboardExcel,
   downloadDashboardPdf,
   downloadExpenseExcel,
@@ -55,6 +61,7 @@ function toIncomeRow(row) {
     Mode: mode,
     Sender: row.description || "-",
     Reference: `TX-${String(row.id).slice(0, 8).toUpperCase()}`,
+    "Receipt No": row.receipt_no || "",
     Status: isConverted ? "Converted" : row.category === "UPI" ? "Pending" : "Recorded",
     "Transaction ID": row.id,
     "Cash Income Ref": `INCOME-${String(row.id).slice(0, 8).toUpperCase()}`,
@@ -270,7 +277,81 @@ function EmptyTable({ icon, text }) {
   );
 }
 
-function DashboardView({ income, expense }) {
+function ReceiptContent({ receipt }) {
+  const { date, time } = receiptParts(receipt);
+
+  return (
+    <div className="receipt-paper">
+      <div className="receipt-rule" />
+      <div className="receipt-title">
+        <h3>{RECEIPT_TEMPLE_NAME}</h3>
+        <p>DONATION RECEIPT</p>
+      </div>
+      <div className="receipt-rule" />
+
+      <div className="receipt-meta">
+        <strong>Receipt No: {receipt.receipt_no || "Pending"}</strong>
+        <span>Date: {date}</span>
+        <span>Time: {time}</span>
+      </div>
+
+      <div className="receipt-field">
+        <span>Received From:</span>
+        <strong>{receipt.Name || receipt.description || "-"}</strong>
+      </div>
+      <div className="receipt-field">
+        <span>Amount:</span>
+        <strong>{receiptAmount(receipt.Amount ?? receipt.amount)}</strong>
+      </div>
+      <div className="receipt-field">
+        <span>Payment Mode:</span>
+        <strong>{receipt.Mode || receipt.category || "-"}</strong>
+      </div>
+
+      <p className="receipt-thanks">Thank You For Your Contribution</p>
+      <div className="receipt-rule" />
+    </div>
+  );
+}
+
+function ReceiptModal({ receipt, onClose, onPrint, onDownload }) {
+  if (!receipt) return null;
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <div
+        className="receipt-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Donation receipt"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="receipt-modal-header no-print">
+          <div>
+            <h3>Donation Receipt</h3>
+            <p>{receipt.receipt_no || "Receipt number pending"}</p>
+          </div>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Close receipt">
+            x
+          </button>
+        </div>
+        <div id="printable-receipt">
+          <ReceiptContent receipt={receipt} />
+        </div>
+        <div className="receipt-actions no-print">
+          <button type="button" className="btn btn-ghost" onClick={onPrint}>
+            Print Receipt
+          </button>
+          <button type="button" className="btn btn-primary receipt-download" onClick={onDownload}>
+            Download PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardView({ income, expense, onViewReceipt }) {
   const recentIncome = income.slice(0, 5);
   const recentExpense = expense.slice(0, 5);
   const totalIncome = sumAmount(income);
@@ -285,7 +366,13 @@ function DashboardView({ income, expense }) {
       </div>
 
       <div className="recent-grid">
-        <RecordTable title="Recent Income" records={recentIncome} type="income" readOnly />
+        <RecordTable
+          title="Recent Income"
+          records={recentIncome}
+          type="income"
+          readOnly
+          onViewReceipt={onViewReceipt}
+        />
         <RecordTable title="Recent Expenses" records={recentExpense} type="expense" readOnly />
       </div>
     </>
@@ -349,7 +436,7 @@ function TransactionForm({ type, onSubmit, saving }) {
   );
 }
 
-function RecordTable({ title, records, type, readOnly = false, onDelete, deletingId }) {
+function RecordTable({ title, records, type, readOnly = false, onDelete, deletingId, onViewReceipt }) {
   const isExpense = type === "expense";
 
   return (
@@ -372,6 +459,7 @@ function RecordTable({ title, records, type, readOnly = false, onDelete, deletin
                 <th>{isExpense ? "Title" : "Name"}</th>
                 <th>Amount</th>
                 <th>Mode</th>
+                {!isExpense && <th>Receipt</th>}
                 {!readOnly && <th>Actions</th>}
               </tr>
             </thead>
@@ -384,6 +472,13 @@ function RecordTable({ title, records, type, readOnly = false, onDelete, deletin
                   <td>
                     <span className={`badge mode-${String(row.Mode || "").toLowerCase()}`}>{row.Mode}</span>
                   </td>
+                  {!isExpense && (
+                    <td>
+                      <button type="button" className="link-btn" onClick={() => onViewReceipt?.(row)}>
+                        View Receipt
+                      </button>
+                    </td>
+                  )}
                   {!readOnly && (
                     <td>
                       <div className="table-actions">
@@ -413,6 +508,7 @@ function TransactionView({
   records,
   onSubmit,
   onDelete,
+  onViewReceipt,
   saving,
   deletingId,
 }) {
@@ -438,6 +534,7 @@ function TransactionView({
         type={type}
         onDelete={onDelete}
         deletingId={deletingId}
+        onViewReceipt={onViewReceipt}
       />
     </div>
   );
@@ -575,6 +672,7 @@ export default function App() {
   const [period, setPeriod] = useState("all");
   const [customRange, setCustomRange] = useState({ from: "", to: "" });
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeReceipt, setActiveReceipt] = useState(null);
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -627,7 +725,7 @@ export default function App() {
     const periodRecords = filterByPeriod(incomeRows, period, customRange);
     return sortByTransactionDateDesc(
       periodRecords.filter((row) =>
-        recordMatchesSearch(row, ["Name", "Amount", "Mode", "Date"], searchQuery)
+        recordMatchesSearch(row, ["Name", "Amount", "Mode", "Date", "Receipt No"], searchQuery)
       )
     );
   }, [incomeRows, period, customRange, searchQuery]);
@@ -718,9 +816,14 @@ export default function App() {
   async function handleSubmit(form) {
     setSaving(true);
     try {
-      await addTransaction(form);
-      setToast({ message: "Record saved successfully", type: "success" });
+      const saved = await addTransaction(form);
       await load();
+      if (saved.type === "income") {
+        setActiveReceipt(toIncomeRow(saved));
+        setToast({ message: "Donation saved and receipt generated", type: "success" });
+      } else {
+        setToast({ message: "Record saved successfully", type: "success" });
+      }
     } catch (err) {
       setToast({ message: err.message || "Failed to save record", type: "error" });
     } finally {
@@ -763,6 +866,14 @@ export default function App() {
     } finally {
       setConverting(null);
     }
+  }
+
+  function handlePrintReceipt() {
+    window.print();
+  }
+
+  function handleDownloadReceipt() {
+    if (activeReceipt) downloadReceiptPdf(activeReceipt);
   }
 
   if (authLoading) {
@@ -886,6 +997,7 @@ export default function App() {
               <DashboardView
                 income={filteredIncome}
                 expense={filteredExpense}
+                onViewReceipt={setActiveReceipt}
               />
             )}
             {tab === "income" && (
@@ -894,6 +1006,7 @@ export default function App() {
                 records={filteredIncome}
                 onSubmit={handleSubmit}
                 onDelete={handleDelete}
+                onViewReceipt={setActiveReceipt}
                 saving={saving}
                 deletingId={deletingId}
               />
@@ -913,6 +1026,7 @@ export default function App() {
                 records={filteredExpense}
                 onSubmit={handleSubmit}
                 onDelete={handleDelete}
+                onViewReceipt={setActiveReceipt}
                 saving={saving}
                 deletingId={deletingId}
               />
@@ -922,6 +1036,12 @@ export default function App() {
       </main>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <ReceiptModal
+        receipt={activeReceipt}
+        onClose={() => setActiveReceipt(null)}
+        onPrint={handlePrintReceipt}
+        onDownload={handleDownloadReceipt}
+      />
     </div>
   );
 }
