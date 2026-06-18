@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import { getTransactionDate } from "./dateFilter";
 
-export const RECEIPT_TEMPLE_NAME = "SHREE XYZ TEMPLE";
+export const RECEIPT_TEMPLE_NAME = "Neelkanth Mahadev Mandir, Gulab Bari Ajmer";
 
 function receiptDateSource(receipt) {
   const date = getTransactionDate(receipt);
