@@ -40,6 +40,10 @@ function normalizeTransaction(input, { includeDate = false } = {}) {
     payload.converted_at = input.converted_at;
   }
 
+  if (Object.prototype.hasOwnProperty.call(input, "receipt_no")) {
+    payload.receipt_no = input.receipt_no;
+  }
+
   return payload;
 }
 

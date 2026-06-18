@@ -59,6 +59,7 @@ function toIncomeRow(row) {
     Name: row.description || "-",
     Amount: row.amount,
     Mode: mode,
+    HasReceipt: !isConverted,
     Sender: row.description || "-",
     Reference: `TX-${String(row.id).slice(0, 8).toUpperCase()}`,
     "Receipt No": row.receipt_no || "",
@@ -472,13 +473,14 @@ function RecordTable({ title, records, type, readOnly = false, onDelete, deletin
                   <td>
                     <span className={`badge mode-${String(row.Mode || "").toLowerCase()}`}>{row.Mode}</span>
                   </td>
-                  {!isExpense && (
+                  {!isExpense && row.HasReceipt && (
                     <td>
                       <button type="button" className="link-btn" onClick={() => onViewReceipt?.(row)}>
                         View Receipt
                       </button>
                     </td>
                   )}
+                  {!isExpense && !row.HasReceipt && <td className="date-cell">-</td>}
                   {!readOnly && (
                     <td>
                       <div className="table-actions">
@@ -855,6 +857,7 @@ export default function App() {
         description: tx.description,
         amount: tx.amount,
         converted_at: new Date().toISOString(),
+        receipt_no: null,
       });
       setToast({
         message: `${formatCurrency(tx.Amount)} converted to cash`,

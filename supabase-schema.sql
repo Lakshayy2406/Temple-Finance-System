@@ -61,7 +61,9 @@ security definer
 set search_path = public
 as $$
 begin
-  if new.type = 'income' and nullif(trim(coalesce(new.receipt_no, '')), '') is null then
+  if new.type = 'income'
+    and coalesce(new.category, '') <> 'UPI Converted'
+    and nullif(trim(coalesce(new.receipt_no, '')), '') is null then
     new.receipt_no = public.next_receipt_no(
       public.receipt_year_from_transaction(new.date, coalesce(new.created_at, now()))
     );
@@ -86,6 +88,7 @@ with ordered_income as (
     ) as receipt_number
   from public.transactions
   where type = 'income'
+    and coalesce(category, '') <> 'UPI Converted'
     and nullif(trim(coalesce(receipt_no, '')), '') is null
 ),
 updated_income as (
@@ -106,12 +109,19 @@ from max_numbers
 on conflict (receipt_year)
 do update set last_number = greatest(public.receipt_counters.last_number, excluded.last_number);
 
+update public.transactions
+set receipt_no = null
+where type = 'income'
+  and category = 'UPI Converted'
+  and receipt_no is not null;
+
 with existing_receipts as (
   select
     substring(receipt_no from '#([0-9]{4})-')::integer as receipt_year,
     substring(receipt_no from '-([0-9]+)$')::integer as receipt_number
   from public.transactions
   where type = 'income'
+    and coalesce(category, '') <> 'UPI Converted'
     and receipt_no ~ '^#[0-9]{4}-[0-9]+$'
 ),
 max_existing as (
