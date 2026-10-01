@@ -56,4 +56,4 @@ Do not commit service-role keys, passwords, or other secrets. Use environment va
 
 ## Author
 
-**Lakshay Vaishnav** · [GitHub](https://github.com/Lakshayy2406)
+**Lakshay Sharma** · [GitHub](https://github.com/Lakshayy2406)
